@@ -1,11 +1,22 @@
+-- vector with 1 on every axis
+local oneVec = Vector(1,1,1)
+
 -- margin used when doing the hull trace (should be a little bit)
-local margin = Vector(3, 3, 3)
+local margin = CreateConVar("unstuck_margin", 3, FCVAR_NEVER_AS_STRING, "Hull margin for stuck detection."):GetFloat()*oneVec
 
 -- delay before stuck checks
-local delay = 1
+local delay = CreateConVar("unstuck_tick", 1, FCVAR_NEVER_AS_STRING, "Stuck check interval (lower = more reponsive)."):GetFloat()
 
 -- minimum velocity difference to consider stuck
-local velMin = 5
+local velMin = CreateConVar("unstuck_velocity_min", 5, FCVAR_NEVER_AS_STRING, "Minimum velocity difference to consider stuck."):GetFloat()
+
+cvars.RemoveChangeCallback("unstuck_margin",       "default")
+cvars.RemoveChangeCallback("unstuck_tick",         "default")
+cvars.RemoveChangeCallback("unstick_velocity_min", "default")
+
+cvars.AddChangeCallback("unstuck_margin",       function(cvar, old, new) margin = tonumber(new)*oneVec end, "default")
+cvars.AddChangeCallback("unstuck_tick",         function(cvar, old, new) delay  = tonumber(new)        end, "default")
+cvars.AddChangeCallback("unstuck_velocity_min", function(cvar, old, new) velMin = tonumber(new)        end, "default")
 
 local function IsStuck(pl, mv)
 	-- don't bother with incompatible players
@@ -64,11 +75,14 @@ local function SetupHooks()
 end
 
 hook.Add("InitPostEntity", "unstuck", function()
-	-- a navmesh wasn't loaded with the map, we don't even need to do anything
-	if !navmesh.IsLoaded() then return end
+	-- this timer is needed because apparently the navmesh hasn't quite loaded at this point yet
+	timer.Simple(1, function()
+		-- a navmesh wasn't loaded with the map, we don't even need to do anything
+		if !navmesh.IsLoaded() then return end
 
-	-- just kidding we need to setup the system now
-	SetupHooks()
+		-- just kidding we need to setup the system now
+		SetupHooks()
+	end)
 end)
 
 -- uncomment if testing (this will be called once automatically for comptabile maps)
